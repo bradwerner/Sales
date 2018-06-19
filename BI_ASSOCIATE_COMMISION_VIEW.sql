@@ -5,12 +5,11 @@ Requestor: Christine Brausen
 Developer: Kyle MacKenzie
 	V1 - 6/19/2018 
 *****************/
-
 Select
 	s.[Salesperson ID],
 	s.[SOP Type],
 	s.[SOP Number],
-	cast(s.[Document Date]) as [Document Date],
+	cast(s.[Document Date] as date) as [Document Date],
 	s.[Customer Number],
 	s.[Customer Name],
 	s.[Customer PO Number],

@@ -7,6 +7,7 @@ Developer: Kyle MacKenzie
 	V1 - 6/19/2018 
 *****************/
 
+
 Select
 	cm.[Sales Person Name] as [Manager Name],
 	s.[Salesperson ID],
@@ -54,8 +55,17 @@ FROM
 	it.dbo.Store_Associates emp      
 		on s.[Salesperson ID] = emp.[Sales Person Name]
 	Inner join
-	(select [Sales Person Name], [Commission Rate], [Home Store] from it.dbo.Store_Associates where  [Salesperson Type] like 'Manager%') cm
-		on emp.[Home Store] = cm.[Home Store]
+	(	select Distinct -- FOr managers of multiple stores
+			sa.[Sales Person Name], sa.[Commission Rate], li.REPORTING_CUSTOMER_CLASS  
+		from	
+			it.dbo.Store_Associates sa
+			inner join
+			it.dbo.LOCATION_INFO li		
+				on sa.[Home Store] = li.MANAGER_COMMISSION_STORE
+		where  
+			[Salesperson Type] like 'Manager%'
+		) cm
+		on emp.[Home Store] = cm.REPORTING_CUSTOMER_CLASS
 WHERE
 	([SOP Type] = 'Invoice' OR [SOP Type] = 'Return') AND [Void Status] = 'Normal' AND [Document Status] = 'Posted'
 	AND cast(s.[Document Date] as date) between '2018-04-01' and '2018-04-30'

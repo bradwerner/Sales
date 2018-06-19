@@ -5,9 +5,6 @@ Requestor: Christine Brausen
 Developer: Kyle MacKenzie
 	V1 - 6/19/2018 
 *****************/
-/*****************
-Store associate piece Only
-*****************/
 
 Select
 	s.[Salesperson ID],

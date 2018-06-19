@@ -10,7 +10,7 @@ Select
 	s.[Salesperson ID],
 	s.[SOP Type],
 	s.[SOP Number],
-	s.[Document Date] as 'Date',
+	cast(s.[Document Date]) as [Document Date],
 	s.[Customer Number],
 	s.[Customer Name],
 	s.[Customer PO Number],

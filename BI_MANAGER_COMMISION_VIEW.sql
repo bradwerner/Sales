@@ -5,6 +5,8 @@ Program Description: A commission view that will be fed into BI360 for reporting
 Requestor: Christine Brausen
 Developer: Kyle MacKenzie
 	V1 - 6/19/2018 
+	v2 - 6/26/2018 - I was missing the Store Manager Sales for NY market.  I added a new field to the Location Table to help
+		identify if the store is a market or not.  Then that was used as part of the Join condition.
 *****************/
 
 
@@ -45,7 +47,6 @@ Select
 		else (- s.[Originating Subtotal] + s.[Originating Trade Discount Amount]) * (cast(cm.[Commission Rate] as decimal(4,2)) * .01)
 	End as [Commission]
 
-
 FROM
 	blu.dbo.SalesTransactions s
 	inner join
@@ -56,7 +57,7 @@ FROM
 		on s.[Salesperson ID] = emp.[Sales Person Name]
 	Inner join
 	(	select Distinct -- FOr managers of multiple stores
-			sa.[Sales Person Name], sa.[Commission Rate], li.REPORTING_CUSTOMER_CLASS  
+			sa.[Sales Person Name], sa.[Commission Rate], li.REPORTING_CUSTOMER_CLASS--, case when sq.Market_store = 1 then  sa.[Home Store] 
 		from	
 			it.dbo.Store_Associates sa
 			inner join
@@ -65,11 +66,12 @@ FROM
 		where  
 			[Salesperson Type] like 'Manager%'
 		) cm
-		on emp.[Home Store] = cm.REPORTING_CUSTOMER_CLASS
+		on case when li.market_store = 1 and emp.[Salesperson Type] like 'Manager%' then li.REPORTING_CUSTOMER_CLASS else emp.[Home Store] end = cm.REPORTING_CUSTOMER_CLASS
 WHERE
 	([SOP Type] = 'Invoice' OR [SOP Type] = 'Return') AND [Void Status] = 'Normal' AND [Document Status] = 'Posted'
-	AND cast(s.[Document Date] as date) between '2018-04-01' and '2018-04-30'
+	and	 cast(s.[Document Date] as date) between '2018-04-01' and '2018-04-30'
 --	and li.LOCATION_TYPE = 'Store'
 --	and s.[Salesperson ID] <> ''
 	and s.[Customer Class] <> 'Employee'
+--	and s.[SOP Number] in ('INV00215114', 'INV00216482', 'INV00217004', 'INV00217427')
 	--and emp.[Salesperson Type] = 'Sales Associate'

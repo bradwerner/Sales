@@ -1,4 +1,10 @@
-
+/**********************
+Program Name: Return_Service_Orders.sql
+Program Description: A view that builds data for Returns and Service orders.  
+Requestor: Kyle MacKenzie
+Developer: Kyle MacKenzie
+Updates: V1 - 8/3/2018
+**********************/
 ALTER view [dbo].[Return_Defect_Orders] as 
 
 Select 

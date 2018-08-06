@@ -24,6 +24,7 @@ Updates: V1 - 11/1/2017
 		v11 - 3/30/2018 - Customer service requested that we add the '[Requested Ship Date]' at the Order level and not the line item level.  Added the new field [Requested Ship Date from Sales Transaction]
 		v12 - 4/18/2018 - Added our new PO Promise date and if it was calculated or from a PO
 		v13 - 4/20/2018 - Added Budget Customer Class
+		v14 - 8/6/2018 - Changed the Date to 2016 to speed up the query.  Plus we don't need all this data
 
 Kyle Notes
 	1. Web Outlet Sale = 'No' and 20/20 Sale = 'No'.  Originating Subtotal ends in 00 or is Mattress.  It is a sale in October that isn't 20% off RETAIL - Normal Web Sale
@@ -138,7 +139,7 @@ FROM
 
 WHERE
 	(sli.[SOP Type]='Order' or (sli.[SOP Type]='Invoice' and sli.[Batch Number] like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
-	AND cast(sli.[Document Date] as date) >= '01/01/2010'
+	AND cast(sli.[Document Date] as date) >= '01/01/2016'
 --	AND cast([Document Date] as date) <= '10/31/2017'
 	AND sli.[SOP Number] NOT LIKE '%SVC%'  -- Exclude Service Orders
 --	and [User Category Value 5] = 'Hardware'

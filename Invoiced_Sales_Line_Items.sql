@@ -43,6 +43,7 @@ Updates: V2 - 11/16/2018
 1. Added Original Number
 2. Added join condition in table a sop1.SOPTYPE = sop2.SOPTYPE
 3. Modified the join condition while joining header with win table.
+4. Using inner join for joining iv to header table
 
 **********************/
 
@@ -211,7 +212,7 @@ FROM
 		LEFT OUTER JOIN 
 		     blu.dbo.iv00101 AS iv WITH (nolock) 
              ON [line].[itemnmbr] = iv.[itemnmbr] 
-		LEFT OUTER JOIN                                   -----tried inner join same result
+		INNER JOIN                                   
 		     blu.dbo.sop30200 AS header WITH (nolock)  
              ON [line].[sopnumbe] = header.[sopnumbe] 
              AND [line].[soptype] = header.[soptype]
@@ -221,7 +222,7 @@ FROM
 		INNER JOIN 
 		     IT.dbo.LOCATION_INFO loc WITH (nolock)
 			 ON rm.[CUSTCLAS] = loc.SYSTEM_CUSTOMER_CLASS
-        LEFT OUTER JOIN 
+                LEFT OUTER JOIN 
 		     blu.dbo.rm00102 AS [shipto] WITH (nolock)
 		     ON  header.[CUSTNMBR] = [shipto].CUSTNMBR
 	         and header.PRSTADCD = [shipto].ADRSCODE

@@ -13,139 +13,250 @@ Updates: V1 - 2/22/2018
 
 **********************/
 
-Select
-	b.[SOP Type]
-	,b.[SOP Number]
-	,b.[Item Number]
-	,b.[Item Description]
-	,substring(b.[Item Number], 3,1) as Item_Level
-	,b.Qty
-	,b.[Extended Cost]
-	,b.[Extended Price]
-	,b.[Unit Cost]
-	,b.[Unit Price]
-	,b.[Customer Number]
-	,b.[Actual Ship Date]
-	,b.[Back Order Date]
-	,b.[Line Item Sequence]
-	,b.[System Customer Class]
-	,b.[Customer Class]
-	,b.[Budget Customer Class]
-	,b.[Location Type]
-	,b.DIVISION
-	,b.[Customer Discount]
-	,b.[Customer Name]
-	,b.[Customer Name from Customer Master]
-	,b.[Customer PO Number]
-	,b.[Document Date]
-	,Round(b.[Freight Amount] / a.order_row_Count, 4) as [Freight Amount] -- Looks like at the Order Level
-	,round(b.[Freight Tax Amount] / a.order_row_Count, 4) as [Freight Tax Amount]-- Looks like it is Order Level
-	,b.[Item Class Code]
-	,b.[Item Type]
-	,b.[Location Code]
-	,b.[Master Number]
-	,b.[Order Date]
-	,b.[Original Number]
-	,b.[Original Type]
-	,b.[Originating Trade Discount Amount]
-	,b.[Posting Status]
-	,b.[Requested Ship Date]
-	,b.[Salesperson ID from Sales Transaction]
-	,b.[Tax Amount]
-	,b.[Trade Discount Amount]
-	,b.[Trade Discount Percent]
-	,b.BDB_Product
-	,b.Active_Item
-	,b.Color
-	,b.Style
-	,b.Category
-	,b.[Void Status]
-	,b.[Address 1 from Sales Line Item]
-	,b.[City from Sales Line Item]
-	,b.[State from Sales Line Item]
-	,b.[Zip Code from Sales Line Item]
-	,a.order_row_Count
+Requestor: Kyle MacKenzie
+Developer: Ankita Gupta
+
+Tables used
+  1. SOP30200
+  2. SOP30300
+  3. IV00101
+  4. RM00101
+  5. RM00102
+  6. LOCATION_INFO
+  7. EXT01100
+  8. EXT01103
+  9. EXT20010
+  10.EXT20020
+  11.EXT20021
+  
+
+Updates: V4 - 11/16/2018
+
+1. Created a new view from the tables in GP and not using saleslineitems view to make query more efficient and fast. It reduced the 
+   runtime to almost half.
+2. Modified Kyle's code to add billing and shipping address and dealer classification for all SOPs.
+3. Changed the table a to get data directly from SOP30300 and SOP30200 and not using SalesLineitems view to make query runtime short.
+
+
+Updates: V5 - 11/16/2018
+
+1. Added Original Number
+2. Added join condition in table a sop1.SOPTYPE = sop2.SOPTYPE
+3. Modified the join condition while joining header with win table.
+4. Using inner join for joining iv to header table
+
+Updates: V6 - 11/20/2018
+
+1. changed the case of the fields to match the old code as many reports on tableau was showing error as tableu is case sensitive.
+
+**********************/
+
+select 
+		b.[SOP Type],
+		b.[SOP Number], 
+		b.[Item Number], 
+		b.[Item Description], 
+		substring(b.[Item Number],3,1) as Item_Level,
+		b.[Qty], 
+		b.[Extended Cost], 
+		b.[Extended Price], 
+        b.[Unit Cost], 
+        b.[Unit Price], 
+        b.[Customer Number],
+		b.[Actual Ship Date], 
+		b.[Back Order Date],
+		b.[Line Item Sequence], 
+		b.[System Customer Class],
+        b.[Customer Class],
+	    b.[Budget Customer Class],
+	    b.[Location Type],
+	    b.[DIVISION],
+	    b.[Customer Discount], 
+		b.[Customer Name], 
+        b.[Customer Name from Customer Master], 
+        b.[Customer PO Number], 
+		b.[Document Date],
+		Round(b.[Freight Amount] / a.order_row_count,4) as [Freight Amount],
+		Round(b.[Freight Tax Amount] / a.order_row_count,4) as [Freight Tax Amount],
+		b.[Item Class Code],
+		b.[Item Type],
+		b.[Location Code],
+		b.[Master Number],
+		b.[Order Date], 
+		b.[Original Number],
+		b.[Original Type],
+		b.[Originating Trade Discount Amount],
+		b.[Posting Status],
+		b.[Requested Ship Date],
+		b.[Salesperson ID from Sales Transaction],
+		b.[Tax Amount], 
+		b.[Trade Discount Amount],
+		b.[Trade Discount Percent], 
+		b.[BDB_Product], 
+        b.[Active_Item], 
+        b.[Color], 
+        b.[Style], 
+        b.[Category], 
+		b.[Void Status],
+		b.[Contact Person],
+		b.[ShipToName],
+		b.[ShipTo Address1],
+		b.[ShipTo Address2],
+		b.[ShipTo Address3],
+		b.[ShipTo City],
+		b.[ShipTo State],
+		b.[ShipTo Zip],
+		b.[ShipTo Country],
+		b.[BillTo Address1],
+		b.[BillTo Address2],
+		b.[BillTo Address3],
+		b.[BillTo City],
+		b.[BillTo State],
+		b.[BillTo Zip],
+		b.[BillTo Country],
+		b.[Phone Number],
+		a.order_row_Count,
+		b.[Dealer Classification]
 from
-	(
-	Select
-		i.[SOP NUmber], i.[SOP Type], max(i.rownumber) as order_row_Count
-	from
-		(
-		SELECT row_number() over (Partition by [SOP NUmber] order by [SOP NUmber], [Item Number] ) as rownumber,
-		[SOP Type]
-			  ,[SOP Number]
-		  FROM
-			[BLU].[dbo].[SalesLineItems] sli
-		  where
-			(([SOP Type] = 'Invoice' AND [Void Status] = 'Normal' AND [Document Status] = 'Posted' AND [SOP Number] NOT LIKE '%SVC%')
-			OR ([SOP Type] = 'Return' AND [Void Status]='Normal' AND [Document Status] = 'Posted'))
-			AND [Document Date] >= '2010-01-01'
-		) i
-	group by i.[SOP NUmber], i.[SOP Type]
-	) a
-
-inner join
-
 (
-	SELECT
-		sli.[SOP Type]
-		,sli.[SOP Number]
-		,sli.[Item Number]
-		,sli.[Item Description]
-		,case when sli.[SOP Type] = 'Invoice' then sli.[QTY] else - sli.[QTY] end as Qty
-		,case when sli.[SOP Type] = 'Invoice' then sli.[Extended Cost] else - sli.[Extended Cost] end as [Extended Cost]
-		,case when sli.[SOP Type] = 'Invoice' then sli.[Extended Price] else - sli.[Extended Price] end as [Extended Price]
-		,case when sli.[SOP Type] = 'Invoice' then sli.[Unit Cost] else - sli.[Unit Cost] end as [Unit Cost]
-		,case when sli.[SOP Type] = 'Invoice' then sli.[Unit Price] else - sli.[Unit Price] end as [Unit Price]
-		,sli.[Customer Number]
-		,cast(sli.[Actual Ship Date] as date) as [Actual Ship Date]
-		,cast(sli.[Back Order Date] as date) as [Back Order Date]
-		,sli.[Line Item Sequence]
-		,sli.[Customer Class] as [System Customer Class]
-		,loc.REPORTING_CUSTOMER_CLASS as [Customer Class]
-		,loc.BUDGET_CUSTOMER_CLASS as [Budget Customer Class]
-		,loc.LOCATION_TYPE as [Location Type]
-		,loc.DIVISION
-		,sli.[Customer Discount]
-		,sli.[Customer Name]
-		,sli.[Customer Name from Customer Master]
-		,sli.[Customer PO Number]
-		,cast(sli.[Document Date] as date) as [Document Date]
-		,sli.[Freight Amount] -- Looks like at the Order Level
-		,sli.[Freight Tax Amount] -- Looks like it is Order Level
-		,sli.[Item Class Code]
-		,sli.[Item Type]
-		,sli.[Location Code]
-		,sli.[Master Number]
-		,sli.[Order Date]
-		,sli.[Original Number]
-		,sli.[Original Type]
-		,case when sli.[SOP Type] = 'Invoice' then sli.[Originating Trade Discount Amount] else -sli.[Originating Trade Discount Amount] end as [Originating Trade Discount Amount]
-		,sli.[Posting Status]
-		,cast(sli.[Requested Ship Date] as date) as [Requested Ship Date]
-		,sli.[Salesperson ID from Sales Transaction]
-		,sli.[Tax Amount]
-		,sli.[Trade Discount Amount]
-		,sli.[Trade Discount Percent]
-		,sli.[User Category Value 1] as BDB_Product
-		,sli.[User Category Value 2] as Active_Item
-		,sli.[User Category Value 3] as Color
-		,sli.[User Category Value 4] as Style
-		,sli.[User Category Value 5] as Category
-		,sli.[Void Status]
-		,sli.[Address 1 from Sales Line Item]
-		,sli.[City from Sales Line Item]
-		,sli.[State from Sales Line Item]
-		,sli.[Zip Code from Sales Line Item]
-
-	FROM
-		[BLU].[dbo].[SalesLineItems] sli
-		Inner join
-		IT.dbo.LOCATION_INFO loc
-			on sli.[Customer Class] = loc.SYSTEM_CUSTOMER_CLASS
-	where
-		(([SOP Type] = 'Invoice' AND [Void Status] = 'Normal' AND [Document Status] = 'Posted' AND [SOP Number] NOT LIKE '%SVC%')
-		OR ([SOP Type] = 'Return' AND [Void Status]='Normal' AND [Document Status] = 'Posted'))
-		AND [Document Date] >= '2010-01-01'
-	) b
-on a.[SOP Number] = b.[SOP Number] and a.[SOP Type] = b.[SOP Type]
+select
+    sop1.SOPNUMBE, count(sop2.ITEMNMBR) as order_row_count , 'SOP Type' =  blu.dbo.Dyn_func_sop_type(sop1.soptype)
+from
+    blu.dbo.SOP30200 sop1 with (nolock)
+    inner join
+    blu.dbo.sop30300 sop2 with (nolock)
+        on sop1.SOPNUMBE = sop2.SOPNUMBE
+		AND sop1.SOPTYPE = sop2.SOPTYPE
+where
+    ((sop1.SOPTYPE = 3 and sop1.VOIDSTTS = 0  and sop1.SOPNUMBE not like '%SVC%')
+    OR (sop1.SOPTYPE = 4 and sop1.VOIDSTTS = 0 ))
+    and sop1.DOCDATE >= '2010-01-01'
+group by
+    sop1.SOPNUMBE, sop1.SOPTYPE
+ ) a
+inner join
+(
+select  
+		 'SOP Type' =  blu.dbo.Dyn_func_sop_type([line].[soptype]), 
+	     Rtrim([line].[sopnumbe])                                  AS 'SOP Number', 
+         Rtrim([line].[itemnmbr])                                  AS 'Item Number', 
+         Rtrim([line].[itemdesc])                                  AS 'Item Description', 
+		 case when [line].[soptype] = 3 
+			then [line].[quantity] else - [line].[quantity] end    AS 'QTY', 
+         case when[line].[soptype] = 3 
+			then [line].[extdcost] else - [line].[extdcost] end    AS 'Extended Cost',
+         case when [line].[soptype] = 3 
+			then [line].[xtndprce] else - [line].[xtndprce] end    AS 'Extended Price', 
+         case when [line].[soptype] = 3 
+			then [line].[unitcost] else - [line].[unitcost] end    AS 'Unit Cost',
+         case when [line].[soptype] = 3 
+			then [line].[unitprce] else - [line].[unitprce] end    AS 'Unit Price',
+		 Rtrim(header.[custnmbr])                                  AS 'Customer Number',
+		 cast(header.[actlship] as date)                           AS 'Actual Ship Date', 
+		 cast(header.[backdate] as date)                           AS 'Back Order Date',
+		 [line].[lnitmseq]                                         AS 'Line Item Sequence', 
+		 Rtrim(rm.[custclas])                                      AS 'System Customer Class',
+		 Rtrim(rm.[CUSTCLAS])                                      AS 'Customer Class 1',
+         loc.REPORTING_CUSTOMER_CLASS                              AS 'Customer Class',
+	     loc.BUDGET_CUSTOMER_CLASS                                 AS 'Budget Customer Class',
+	     loc.LOCATION_TYPE                                         AS 'Location Type',
+	     loc.DIVISION                                              AS 'Division',
+	     rm.[custdisc] / 100.00                                    AS 'Customer Discount', 
+		 Rtrim(header.[custname])                                  AS 'Customer Name', 
+         Rtrim(rm.[custname])                                      AS 'Customer Name from Customer Master', 
+         Rtrim(header.[cstponbr])                                  AS 'Customer PO Number', 
+		 cast(header.[docdate] as date)                            AS 'Document Date',
+		 header.[frtamnt]                                          AS 'Freight Amount', 
+		 header.[frttxamt]                                         AS 'Freight Tax Amount',
+		 Rtrim(iv.[itmclscd])                                      AS 'Item Class Code',
+		 'Item Type' = blu.dbo.Dyn_func_item_type(iv.[itemtype]),
+		 Rtrim([line].[locncode])                                  AS'Location Code',
+		 header.[mstrnumb]                                         AS 'Master Number',
+		 header.[ordrdate]                                         AS 'Order Date', 
+		 header.[orignumb]                                         AS 'Original Number',
+		 'Original Type' = 
+			blu.dbo.Dyn_func_original_type(header.[origtype]),
+		 case when [line].[soptype] = 3 
+			then [line].[ortdisam] else - [line].[ortdisam] end    AS 'Originating Trade Discount Amount',
+		 'Posting Status' = 
+			blu.dbo.Dyn_func_posting_status_sop_line_items(header.[pstgstus]),
+		 cast([line].[reqshipdate] as date)                        AS 'Requested Ship Date',
+		 Rtrim(header.[slprsnid])                                  AS 'Salesperson ID from Sales Transaction',
+		 [line].[taxamnt]                                          AS 'Tax Amount', 
+		 [line].[trdisamt]                                         AS 'Trade Discount Amount',
+		 header.[trdispct]                                         AS 'Trade Discount Percent', 
+		 Rtrim(iv.[uscatvls_1])                                    AS 'BDB_Product', 
+         Rtrim(iv.[uscatvls_2])                                    AS 'Active_Item', 
+         Rtrim(iv.[uscatvls_3])                                    AS 'Color', 
+         Rtrim(iv.[uscatvls_4])                                    AS 'Style', 
+         Rtrim(iv.[uscatvls_5])                                    AS 'Category', 
+		 'Void Status' = blu.dbo.Dyn_func_void_status(header.[voidstts]),
+		 header.[CNTCPRSN]                                         AS 'Contact Person',
+		 header.[ShipToName]                                       AS 'ShipToName',
+		 [shipto].[ADDRESS1]                                       AS 'ShipTo Address1',
+		 [shipto].[ADDRESS2]                                       AS 'ShipTo Address2',
+		 [shipto].[ADDRESS3]                                       AS 'ShipTo Address3',
+		 [shipto].[CITY]                                           AS 'ShipTo City',
+		 [shipto].[STATE]                                          AS 'ShipTo State',
+		 [shipto].[ZIP]                                            AS 'ShipTo Zip',
+		 [shipto].[COUNTRY]                                        AS 'ShipTo Country',
+		 [billto].[ADDRESS1]                                       AS 'BillTo Address1',
+		 [billto].[ADDRESS2]                                       AS 'BillTo Address2',
+		 [billto].[ADDRESS3]                                       AS 'BillTo Address3',
+		 [billto].[CITY]                                           AS 'BillTo City',
+		 [billto].[STATE]                                          AS 'BillTo State',
+		 [billto].[ZIP]                                            AS 'BillTo Zip',
+		 [billto].[COUNTRY]                                        AS 'BillTo Country',
+		 header.[PHNUMBR1]                                         AS 'Phone Number',
+		 win.Extender_Key_Values_1                                 AS 'Customer Name1',
+		 rtrim(vl.Strng132)                                        AS 'Dealer Classification'
+FROM
+		blu.dbo.SOP30300 AS line WITH (nolock)
+		LEFT OUTER JOIN 
+		     blu.dbo.iv00101 AS iv WITH (nolock) 
+             ON [line].[itemnmbr] = iv.[itemnmbr] 
+		INNER JOIN                                   
+		     blu.dbo.sop30200 AS header WITH (nolock)  
+             ON [line].[sopnumbe] = header.[sopnumbe] 
+             AND [line].[soptype] = header.[soptype]
+		LEFT OUTER JOIN 
+		     blu.dbo.rm00101 AS rm WITH (nolock) 
+             ON header.[custnmbr] =  rm.[custnmbr]
+		INNER JOIN 
+		     IT.dbo.LOCATION_INFO loc WITH (nolock)
+			 ON rm.[CUSTCLAS] = loc.SYSTEM_CUSTOMER_CLASS
+                LEFT OUTER JOIN 
+		     blu.dbo.rm00102 AS [shipto] WITH (nolock)
+		     ON  header.[CUSTNMBR] = [shipto].CUSTNMBR
+	         and header.PRSTADCD = [shipto].ADRSCODE
+		LEFT OUTER JOIN  
+			 blu.dbo.rm00102 AS [billto] WITH (nolock)
+		     ON header.[CUSTNMBR] = [billto].CUSTNMBR
+	         and header.PRBTADCD = [billto].ADRSCODE
+		LEFT OUTER JOIN
+			 blu.dbo.EXT01100 AS win WITH (nolock)
+			 on header.[custnmbr] = win.Extender_Key_Values_1 
+			 AND win.Extender_Window_ID like 'Dealer'
+		LEFT OUTER JOIN
+			 BLU.dbo.EXT01103 AS cd WITH (nolock)
+			 on win.Extender_Record_ID = cd.Extender_Record_ID
+		LEFT OUTER JOIN
+			 BLU.dbo.EXT20010 AS fd WITH (nolock)
+			 on cd.Field_ID = fd.Field_ID
+			 and fd.FIELDNAM = 'Dealer Classification'
+		LEFT OUTER JOIN
+			 BLU.dbo.EXT20020 AS ld WITH (nolock)
+			 on fd.FIELDNAM = ld.Extender_List_Desc
+		LEFT OUTER JOIN
+			 BLU.dbo.EXT20021 AS vl WITH (nolock)
+			 on ld.Extender_List_ID = vl.Extender_List_ID
+			 and cd.TOTAL = vl.Extender_List_Item_ID
+where
+	((line.[soptype] = 3 AND header.[voidstts] = 0
+        AND line.[sopnumbe] NOT LIKE '%SVC%')
+    OR
+     (line.[soptype] = 4 AND header.[voidstts] = 0))
+    AND header.[docdate] >= '2010-01-01'
+) b
+on a.[SOPNUMBE] = b.[SOP Number]
+and a.[SOP Type] = b.[SOP Type]

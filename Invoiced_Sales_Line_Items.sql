@@ -30,7 +30,7 @@ Tables used
   11.EXT20021
   
 
-Updates: V1 - 11/16/2018
+Updates: V4 - 11/16/2018
 
 1. Created a new view from the tables in GP and not using saleslineitems view to make query more efficient and fast. It reduced the 
    runtime to almost half.
@@ -38,12 +38,16 @@ Updates: V1 - 11/16/2018
 3. Changed the table a to get data directly from SOP30300 and SOP30200 and not using SalesLineitems view to make query runtime short.
 
 
-Updates: V2 - 11/16/2018
+Updates: V5 - 11/16/2018
 
 1. Added Original Number
 2. Added join condition in table a sop1.SOPTYPE = sop2.SOPTYPE
 3. Modified the join condition while joining header with win table.
 4. Using inner join for joining iv to header table
+
+Updates: V6 - 11/20/2018
+
+1. changed the case of the fields to match the old code as many reports on tableau was showing error as tableu is case sensitive.
 
 **********************/
 
@@ -52,8 +56,8 @@ select
 		b.[SOP Number], 
 		b.[Item Number], 
 		b.[Item Description], 
-		substring(b.[Item Number],3,1) as Item_level,
-		b.[QTY], 
+		substring(b.[Item Number],3,1) as Item_Level,
+		b.[Qty], 
 		b.[Extended Cost], 
 		b.[Extended Price], 
         b.[Unit Cost], 
@@ -66,7 +70,7 @@ select
         b.[Customer Class],
 	    b.[Budget Customer Class],
 	    b.[Location Type],
-	    b.[Division],
+	    b.[DIVISION],
 	    b.[Customer Discount], 
 		b.[Customer Name], 
         b.[Customer Name from Customer Master], 
@@ -111,7 +115,7 @@ select
 		b.[BillTo Zip],
 		b.[BillTo Country],
 		b.[Phone Number],
-		a.order_row_count,
+		a.order_row_Count,
 		b.[Dealer Classification]
 from
 (
@@ -132,7 +136,6 @@ group by
  ) a
 inner join
 (
-
 select  
 		 'SOP Type' =  blu.dbo.Dyn_func_sop_type([line].[soptype]), 
 	     Rtrim([line].[sopnumbe])                                  AS 'SOP Number', 

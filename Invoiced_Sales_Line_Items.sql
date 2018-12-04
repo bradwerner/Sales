@@ -10,9 +10,7 @@ Updates: V1 - 2/22/2018
 		v2 - 3/8/2018 - added the location information and attributes.  Added Item_Level field as well
 		v3 - 3/14/2018 - Added a [Customer Name from Customer Master], We realized that Wholesale partners and others get a Name with (Customer Name and Number) in it.  So if a customer
 			has had orders placed directly in GP and Magento the name will be different
-
-**********************/
-
+***************************
 Requestor: Kyle MacKenzie
 Developer: Ankita Gupta
 

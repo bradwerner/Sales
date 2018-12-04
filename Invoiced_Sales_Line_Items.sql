@@ -58,8 +58,8 @@ Updates: V7 - 12/03/2018
 Updates: V7 - 12/04/2018
 
 1. Removed Grand_Total field from the table.
-2. Changed shipping and billing ZIP to show 5 digit zip when country is US else show the original zip of that country
-3. Added code to use US when country is US or United States
+2. Changed shipping and billing ZIP to show 5 digit zip when country is US else show the original zip of that country.
+3. Added code to use US when country is US or United States or USA.
 4. Moved US_zip table to IT database and made necessary change in the code below.
 
 **********************/
@@ -215,18 +215,18 @@ select
 		 [header].[ADDRESS3]                                       AS 'ShipTo Address3',
 		 coalesce(usship.[primary_city],[header].[CITY])           AS 'ShipTo City',
 		 coalesce(usship.[state],[header].[STATE])                 AS 'ShipTo State',
-		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States'),
+		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States','USA'),
 		 'US', coalesce(usship.[country],[header].[COUNTRY]))       AS 'ShipTo Country',
-		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States'), 
+		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States','USA'), 
 		 substring([header].[ZIPCODE],1,5),[header].[ZIPCODE])     AS 'ShipTo Zip',
 		 [billto].[ADDRESS1]                                       AS 'BillTo Address1',
 		 [billto].[ADDRESS2]                                       AS 'BillTo Address2',
 		 [billto].[ADDRESS3]                                       AS 'BillTo Address3',
 		 coalesce(usbill.[primary_city],[billto].[CITY])           AS 'BillTo City',
 		 coalesce(usbill.[state],[billto].[STATE]  )               AS 'BillTo State',
-		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States'),
+		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States','USA'),
 		 'US',coalesce(usbill.[country],[billto].[COUNTRY]))       AS 'BillTo Country',
-		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States'), 
+		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States','USA'), 
 		 substring([billto].[ZIP],1,5),[billto].[ZIP])             AS 'BillTo Zip', 
 		 header.[PHNUMBR1]                                         AS 'Phone Number',
 		 win.Extender_Key_Values_1                                 AS 'Customer Name1',

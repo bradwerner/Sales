@@ -59,6 +59,8 @@ Updates: V7 - 12/04/2018
 
 1. Removed Grand_Total field from the table.
 2. Changed shipping and billing ZIP to show 5 digit zip when country is US else show the original zip of that country
+3. Added code to use US when country is US or United States
+4. Moved US_zip table to IT database and made necessary change in the code below.
 
 **********************/
 
@@ -213,7 +215,8 @@ select
 		 [header].[ADDRESS3]                                       AS 'ShipTo Address3',
 		 coalesce(usship.[primary_city],[header].[CITY])           AS 'ShipTo City',
 		 coalesce(usship.[state],[header].[STATE])                 AS 'ShipTo State',
-		 coalesce(usship.[country],[header].[COUNTRY])             AS 'ShipTo Country',
+		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States'),
+		 'US', coalesce(usship.[country],[header].[COUNTRY]))       AS 'ShipTo Country',
 		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States'), 
 		 substring([header].[ZIPCODE],1,5),[header].[ZIPCODE])     AS 'ShipTo Zip',
 		 [billto].[ADDRESS1]                                       AS 'BillTo Address1',
@@ -221,16 +224,17 @@ select
 		 [billto].[ADDRESS3]                                       AS 'BillTo Address3',
 		 coalesce(usbill.[primary_city],[billto].[CITY])           AS 'BillTo City',
 		 coalesce(usbill.[state],[billto].[STATE]  )               AS 'BillTo State',
-		 coalesce(usbill.[country],[billto].[COUNTRY])             AS 'BillTo Country',
+		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States'),
+		 'US',coalesce(usbill.[country],[billto].[COUNTRY]))       AS 'BillTo Country',
 		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States'), 
 		 substring([billto].[ZIP],1,5),[billto].[ZIP])             AS 'BillTo Zip', 
 		 header.[PHNUMBR1]                                         AS 'Phone Number',
 		 win.Extender_Key_Values_1                                 AS 'Customer Name1',
 		 rtrim(vl.Strng132)                                        AS 'Dealer Classification',
-		 ord.[code]						   AS 'Code',
+		 ord.[code]												   AS 'Code',
 		 ord.[status]                                              AS 'Status',
 		 ord.[coupon_code]                                         AS 'Coupon Code',
-		 ord.[customer_group_id]				   AS 'Customer Group ID'
+		 ord.[customer_group_id]								   AS 'Customer Group ID'
 FROM
 		blu.dbo.SOP30300 AS line WITH (nolock)
 		LEFT OUTER JOIN 
@@ -269,10 +273,10 @@ FROM
 			 on ld.Extender_List_ID = vl.Extender_List_ID
 			 and cd.TOTAL = vl.Extender_List_Item_ID
 		LEFT OUTER JOIN 
-			it_dev.dbo.US_zip AS usship WITH (nolock)
+			it.dbo.US_zip AS usship WITH (nolock)
 			on substring([header].[ZIPCODE], 1, 5) = usship.[zip]
 		LEFT OUTER JOIN 
-			it_dev.dbo.US_zip AS usbill WITH (nolock)
+			it.dbo.US_zip AS usbill WITH (nolock)
 			on substring([BillTo].[Zip], 1, 5) = usbill.[zip]
 		LEFT OUTER JOIN
 			blu.dbo.sop10106 AS tbl WITH (nolock)  ---Joined to this table to get userdef2 to be able to join Magento_orders

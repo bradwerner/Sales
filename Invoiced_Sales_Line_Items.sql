@@ -55,9 +55,14 @@ Updates: V7 - 12/03/2018
 2. Joined invoice table with US_ZIP on zipcode to clean the city, state and country field. 
 3. Getting data from Magento_Orders and joined fields like Code, Status, coupon_code, Customer_group_id,grand_total to Invoice table.
 
+Updates: V7 - 12/04/2018
+
+1. Removed Grand_Total field from the table.
+2. Changed shipping and billing ZIP to show 5 digit zip when country is US else show the original zip of that country
+
 **********************/
 
-select 
+select                                   ---------933629  2:14
 		b.[SOP Type],
 		b.[SOP Number], 
 		b.[Item Number], 
@@ -126,8 +131,7 @@ select
 		b.[Code],
 		b.[Status],
 		b.[Coupon Code],
-		b.[Customer Group ID],
-		b.[Grand Total]
+		b.[Customer Group ID]
 from
 (
 select
@@ -209,23 +213,24 @@ select
 		 [header].[ADDRESS3]                                       AS 'ShipTo Address3',
 		 coalesce(usship.[primary_city],[header].[CITY])           AS 'ShipTo City',
 		 coalesce(usship.[state],[header].[STATE])                 AS 'ShipTo State',
-		 substring([header].[ZIPCODE],1,5)                             AS 'ShipTo Zip',
 		 coalesce(usship.[country],[header].[COUNTRY])             AS 'ShipTo Country',
+		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States'), 
+		 substring([header].[ZIPCODE],1,5),[header].[ZIPCODE])     AS 'ShipTo Zip',
 		 [billto].[ADDRESS1]                                       AS 'BillTo Address1',
 		 [billto].[ADDRESS2]                                       AS 'BillTo Address2',
 		 [billto].[ADDRESS3]                                       AS 'BillTo Address3',
 		 coalesce(usbill.[primary_city],[billto].[CITY])           AS 'BillTo City',
 		 coalesce(usbill.[state],[billto].[STATE]  )               AS 'BillTo State',
-		 substring([billto].[ZIP],1,5)                             AS 'BillTo Zip',
 		 coalesce(usbill.[country],[billto].[COUNTRY])             AS 'BillTo Country',
+		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States'), 
+		 substring([billto].[ZIP],1,5),[billto].[ZIP])             AS 'BillTo Zip', 
 		 header.[PHNUMBR1]                                         AS 'Phone Number',
 		 win.Extender_Key_Values_1                                 AS 'Customer Name1',
 		 rtrim(vl.Strng132)                                        AS 'Dealer Classification',
-		 ord.[code]												   AS 'Code',
+		 ord.[code]						   AS 'Code',
 		 ord.[status]                                              AS 'Status',
 		 ord.[coupon_code]                                         AS 'Coupon Code',
-		 ord.[customer_group_id]								   AS 'Customer Group ID',
-		 ord.[grand_total]                                         AS 'Grand Total'
+		 ord.[customer_group_id]				   AS 'Customer Group ID'
 FROM
 		blu.dbo.SOP30300 AS line WITH (nolock)
 		LEFT OUTER JOIN 
@@ -270,7 +275,7 @@ FROM
 			it_dev.dbo.US_zip AS usbill WITH (nolock)
 			on substring([BillTo].[Zip], 1, 5) = usbill.[zip]
 		LEFT OUTER JOIN
-			blu.dbo.sop10106 AS tbl WITH (nolock)
+			blu.dbo.sop10106 AS tbl WITH (nolock)  ---Joined to this table to get userdef2 to be able to join Magento_orders
 			on line.SOPNUMBE = tbl.SOPNUMBE
 			AND line.SOPTYPE = tbl.SOPTYPE
 		LEFT OUTER JOIN

@@ -26,6 +26,8 @@ Tables used
   9. EXT20010
   10.EXT20020
   11.EXT20021
+  12.US_zip
+  13.SOP10106
   
 
 Updates: V4 - 11/16/2018

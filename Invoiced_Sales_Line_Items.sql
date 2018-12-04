@@ -62,7 +62,7 @@ Updates: V7 - 12/04/2018
 
 **********************/
 
-select                                   ---------933629  2:14
+select                                   
 		b.[SOP Type],
 		b.[SOP Number], 
 		b.[Item Number], 

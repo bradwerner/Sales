@@ -63,7 +63,8 @@ del E:\GPCentral\Scribe\Collaborations\Magento\Inputs\orders_bludot_enterprise.c
 
 drop table [IT].[dbo].[orders_bludot_enterprise]
 
---STEP 4: Move Magento Ordres csv file to Landing table using SSIS Package
+--STEP 4: Move Magento Ordres csv file to Landing table using SSIS Package (this can be painful to update)
+\\bludot-sql1\GPCentral\Scribe\Collaborations\Magento\Code\Magento_Orders.dtsx
 
 --STEP 5: Updating Magento_orders table to extract the new required fileds daily
 

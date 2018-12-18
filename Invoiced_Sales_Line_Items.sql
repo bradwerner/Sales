@@ -62,6 +62,11 @@ Updates: V7 - 12/04/2018
 3. Added code to use US when country is US or United States or USA.
 4. Moved US_zip table to IT database and made necessary change in the code below.
 
+Updates: V8 - 12/18/2018
+
+1. Converting all zip codes in the existing table to 5 digit by adding leading 0's.
+2. While joining to US_zip table adding a condition to not join zip which belongs to Type 'Millitary'.
+
 **********************/
 
 select                                   
@@ -218,7 +223,8 @@ select
 		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States','USA'),
 		 'US', coalesce(usship.[country],[header].[COUNTRY]))       AS 'ShipTo Country',
 		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States','USA'), 
-		 substring([header].[ZIPCODE],1,5),[header].[ZIPCODE])     AS 'ShipTo Zip',
+		 RIGHT('00000'+ISNULL(Left(rtrim(ltrim([header].[ZIPCODE])), 5),''),5),
+		 [header].[ZIPCODE])                                       AS 'ShipTo Zip',
 		 [billto].[ADDRESS1]                                       AS 'BillTo Address1',
 		 [billto].[ADDRESS2]                                       AS 'BillTo Address2',
 		 [billto].[ADDRESS3]                                       AS 'BillTo Address3',
@@ -227,7 +233,8 @@ select
 		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States','USA'),
 		 'US',coalesce(usbill.[country],[billto].[COUNTRY]))       AS 'BillTo Country',
 		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States','USA'), 
-		 substring([billto].[ZIP],1,5),[billto].[ZIP])             AS 'BillTo Zip', 
+		 RIGHT('00000'+ISNULL(Left(rtrim(ltrim([billto].[ZIP])), 5),''),5),
+		 [billto].[ZIP])                                           AS 'BillTo Zip', 
 		 header.[PHNUMBR1]                                         AS 'Phone Number',
 		 win.Extender_Key_Values_1                                 AS 'Customer Name1',
 		 rtrim(vl.Strng132)                                        AS 'Dealer Classification',
@@ -274,10 +281,12 @@ FROM
 			 and cd.TOTAL = vl.Extender_List_Item_ID
 		LEFT OUTER JOIN 
 			it.dbo.US_zip AS usship WITH (nolock)
-			on substring([header].[ZIPCODE], 1, 5) = usship.[zip]
+			on RIGHT('00000'+ISNULL(Left(rtrim(ltrim([header].[ZIPCODE])), 5),''),5) = usship.[zip]
+			and usship.type <> 'Military'
 		LEFT OUTER JOIN 
 			it.dbo.US_zip AS usbill WITH (nolock)
-			on substring([BillTo].[Zip], 1, 5) = usbill.[zip]
+			on RIGHT('00000'+ISNULL(Left(rtrim(ltrim([billto].[ZIP])), 5),''),5) = usbill.[zip]
+			and usbill.type <> 'Military'
 		LEFT OUTER JOIN
 			blu.dbo.sop10106 AS tbl WITH (nolock)  ---Joined to this table to get userdef2 to be able to join Magento_orders
 			on line.SOPNUMBE = tbl.SOPNUMBE

@@ -36,6 +36,9 @@ Updates: V1 - 11/1/2017
 			In order to improve efficiencies I went straight at the tables and added (Nolock)
 			I also removed one field that was not being used.  [Requested Ship Date] - this was at the Line item and won't be updated if Customer Service does someting
 				[Invoice Level 1] - I removed this field but it is needed for the Steel Case Shipping Report
+		
+		V16 - 12/19/2018
+		1. Added Unit Cost and Included Service orders
 
 Kyle Notes
 	1. Web Outlet Sale = 'No' and 20/20 Sale = 'No'.  Originating Subtotal ends in 00 or is Mattress.  It is a sale in October that isn't 20% off RETAIL - Normal Web Sale
@@ -83,6 +86,7 @@ Select
 	lvn.ortdisam as [Originating Trade Discount Amount],
 	(lvn.XTNDPRCE - lvn.ortdisam) AS [Demand Amount],
 	ret.UOMPRICE as Retail_Price,
+	lvn.UNITCOST as 'Unit Cost',
 	rtrim(oln.bachnumb) as [Batch Number],
 	rtrim(oln.SHIPMTHD) as [Shipping Method from Sales Transaction],
 	lvn.qtytoinv as [QTY To Invoice],
@@ -162,7 +166,7 @@ Where
 	oln.DOCDATE >= '2016-01-01'
 	and (oln.SOPTYPE = 2 or (oln.SOPTYPE = 3 and oln.BACHNUMB like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
 	and oln.VOIDSTTS = 0 -- Normal or Not Voided
-	and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
+	--and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
 
 union all
 /* 
@@ -202,6 +206,7 @@ Select
 	lvn.ortdisam as [Originating Trade Discount Amount],
 	(lvn.XTNDPRCE - lvn.ortdisam) AS [Demand Amount],
 	ret.UOMPRICE as Retail_Price,
+	lvn.UNITCOST as 'Unit Cost',
 	rtrim(oln.bachnumb) as [Batch Number],
 	rtrim(oln.SHIPMTHD) as [Shipping Method from Sales Transaction],
 	lvn.qtytoinv as [QTY To Invoice],
@@ -281,4 +286,4 @@ Where
 	oln.DOCDATE >= '2016-01-01'
 	and (oln.SOPTYPE = 2 or (oln.SOPTYPE = 3 and oln.BACHNUMB like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
 	and oln.VOIDSTTS = 0 -- Normal or Not Voided
-	and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
+	--and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders

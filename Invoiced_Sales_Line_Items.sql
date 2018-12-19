@@ -10,9 +10,7 @@ Updates: V1 - 2/22/2018
 		v2 - 3/8/2018 - added the location information and attributes.  Added Item_Level field as well
 		v3 - 3/14/2018 - Added a [Customer Name from Customer Master], We realized that Wholesale partners and others get a Name with (Customer Name and Number) in it.  So if a customer
 			has had orders placed directly in GP and Magento the name will be different
-
-**********************/
-
+***************************
 Requestor: Kyle MacKenzie
 Developer: Ankita Gupta
 
@@ -28,6 +26,8 @@ Tables used
   9. EXT20010
   10.EXT20020
   11.EXT20021
+  12.US_zip
+  13.SOP10106
   
 
 Updates: V4 - 11/16/2018
@@ -49,9 +49,27 @@ Updates: V6 - 11/20/2018
 
 1. changed the case of the fields to match the old code as many reports on tableau was showing error as tableu is case sensitive.
 
+Updates: V7 - 12/03/2018
+
+1. Getting shipping address from sop30200 instead of rm00102.
+2. Joined invoice table with US_ZIP on zipcode to clean the city, state and country field. 
+3. Getting data from Magento_Orders and joined fields like Code, Status, coupon_code, Customer_group_id,grand_total to Invoice table.
+
+Updates: V7 - 12/04/2018
+
+1. Removed Grand_Total field from the table.
+2. Changed shipping and billing ZIP to show 5 digit zip when country is US else show the original zip of that country.
+3. Added code to use US when country is US or United States or USA.
+4. Moved US_zip table to IT database and made necessary change in the code below.
+
+Updates: V8 - 12/18/2018
+
+1. Converting all zip codes in the existing table to 5 digit by adding leading 0's.
+2. While joining to US_zip table adding a condition to not join zip which belongs to Type 'Millitary'.
+
 **********************/
 
-select 
+select                                   
 		b.[SOP Type],
 		b.[SOP Number], 
 		b.[Item Number], 
@@ -115,8 +133,12 @@ select
 		b.[BillTo Zip],
 		b.[BillTo Country],
 		b.[Phone Number],
-		a.order_row_Count,
-		b.[Dealer Classification]
+		a.[order_row_Count],
+		b.[Dealer Classification],
+		b.[Code],
+		b.[Status],
+		b.[Coupon Code],
+		b.[Customer Group ID]
 from
 (
 select
@@ -193,23 +215,33 @@ select
 		 'Void Status' = blu.dbo.Dyn_func_void_status(header.[voidstts]),
 		 header.[CNTCPRSN]                                         AS 'Contact Person',
 		 header.[ShipToName]                                       AS 'ShipToName',
-		 [shipto].[ADDRESS1]                                       AS 'ShipTo Address1',
-		 [shipto].[ADDRESS2]                                       AS 'ShipTo Address2',
-		 [shipto].[ADDRESS3]                                       AS 'ShipTo Address3',
-		 [shipto].[CITY]                                           AS 'ShipTo City',
-		 [shipto].[STATE]                                          AS 'ShipTo State',
-		 [shipto].[ZIP]                                            AS 'ShipTo Zip',
-		 [shipto].[COUNTRY]                                        AS 'ShipTo Country',
+		 [header].[ADDRESS1]                                       AS 'ShipTo Address1',
+		 [header].[ADDRESS2]                                       AS 'ShipTo Address2',
+		 [header].[ADDRESS3]                                       AS 'ShipTo Address3',
+		 coalesce(usship.[primary_city],[header].[CITY])           AS 'ShipTo City',
+		 coalesce(usship.[state],[header].[STATE])                 AS 'ShipTo State',
+		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States','USA'),
+		 'US', coalesce(usship.[country],[header].[COUNTRY]))       AS 'ShipTo Country',
+		 IIF(coalesce(usship.[country],[header].[COUNTRY]) IN ('US','United States','USA'), 
+		 RIGHT('00000'+ISNULL(Left(rtrim(ltrim([header].[ZIPCODE])), 5),''),5),
+		 [header].[ZIPCODE])                                       AS 'ShipTo Zip',
 		 [billto].[ADDRESS1]                                       AS 'BillTo Address1',
 		 [billto].[ADDRESS2]                                       AS 'BillTo Address2',
 		 [billto].[ADDRESS3]                                       AS 'BillTo Address3',
-		 [billto].[CITY]                                           AS 'BillTo City',
-		 [billto].[STATE]                                          AS 'BillTo State',
-		 [billto].[ZIP]                                            AS 'BillTo Zip',
-		 [billto].[COUNTRY]                                        AS 'BillTo Country',
+		 coalesce(usbill.[primary_city],[billto].[CITY])           AS 'BillTo City',
+		 coalesce(usbill.[state],[billto].[STATE]  )               AS 'BillTo State',
+		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States','USA'),
+		 'US',coalesce(usbill.[country],[billto].[COUNTRY]))       AS 'BillTo Country',
+		 IIF(coalesce(usbill.[country],[billto].[COUNTRY]) IN ('US','United States','USA'), 
+		 RIGHT('00000'+ISNULL(Left(rtrim(ltrim([billto].[ZIP])), 5),''),5),
+		 [billto].[ZIP])                                           AS 'BillTo Zip', 
 		 header.[PHNUMBR1]                                         AS 'Phone Number',
 		 win.Extender_Key_Values_1                                 AS 'Customer Name1',
-		 rtrim(vl.Strng132)                                        AS 'Dealer Classification'
+		 rtrim(vl.Strng132)                                        AS 'Dealer Classification',
+		 ord.[code]												   AS 'Code',
+		 ord.[status]                                              AS 'Status',
+		 ord.[coupon_code]                                         AS 'Coupon Code',
+		 ord.[customer_group_id]								   AS 'Customer Group ID'
 FROM
 		blu.dbo.SOP30300 AS line WITH (nolock)
 		LEFT OUTER JOIN 
@@ -225,10 +257,6 @@ FROM
 		INNER JOIN 
 		     IT.dbo.LOCATION_INFO loc WITH (nolock)
 			 ON rm.[CUSTCLAS] = loc.SYSTEM_CUSTOMER_CLASS
-                LEFT OUTER JOIN 
-		     blu.dbo.rm00102 AS [shipto] WITH (nolock)
-		     ON  header.[CUSTNMBR] = [shipto].CUSTNMBR
-	         and header.PRSTADCD = [shipto].ADRSCODE
 		LEFT OUTER JOIN  
 			 blu.dbo.rm00102 AS [billto] WITH (nolock)
 		     ON header.[CUSTNMBR] = [billto].CUSTNMBR
@@ -251,6 +279,21 @@ FROM
 			 BLU.dbo.EXT20021 AS vl WITH (nolock)
 			 on ld.Extender_List_ID = vl.Extender_List_ID
 			 and cd.TOTAL = vl.Extender_List_Item_ID
+		LEFT OUTER JOIN 
+			it.dbo.US_zip AS usship WITH (nolock)
+			on RIGHT('00000'+ISNULL(Left(rtrim(ltrim([header].[ZIPCODE])), 5),''),5) = usship.[zip]
+			and usship.type <> 'Military'
+		LEFT OUTER JOIN 
+			it.dbo.US_zip AS usbill WITH (nolock)
+			on RIGHT('00000'+ISNULL(Left(rtrim(ltrim([billto].[ZIP])), 5),''),5) = usbill.[zip]
+			and usbill.type <> 'Military'
+		LEFT OUTER JOIN
+			blu.dbo.sop10106 AS tbl WITH (nolock)  ---Joined to this table to get userdef2 to be able to join Magento_orders
+			on line.SOPNUMBE = tbl.SOPNUMBE
+			AND line.SOPTYPE = tbl.SOPTYPE
+		LEFT OUTER JOIN
+			it.dbo.Magento_orders ord WITH (nolock)
+			on tbl.[userdef2] = ord.increment_id
 where
 	((line.[soptype] = 3 AND header.[voidstts] = 0
         AND line.[sopnumbe] NOT LIKE '%SVC%')

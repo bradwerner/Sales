@@ -12,6 +12,10 @@ Tables used
   3. OTB_RPT_INVENTORY_CHECK_DAILY_LOG
   
 Updates: V1 - 12/31/2018
+V2 - 01/03/2019
+
+1. Storing data in IT_DEV.dbo.data_rpt_orders table for all updates type. This will give us total sales and stock status for 
+   every update and I ma storing just the instock and out status in the final output table. 
 		
 ***************************/
 
@@ -48,13 +52,13 @@ HAVING min([Document Date]) < '2018-02-01'
 ) a
 
 --------selecting data from temp table
-select * from #temp -----2135
+
+select * from #temp --------2137
 
 ----Creating a new table in IT_Dev and storing data from salesLineitem Table
 
-
 select a.* into IT_DEV.dbo.data_saleslineitem from 
-(select [Item Number], [Document Date], sum(QTY) as 'total qty' from blu.dbo.SalesLineItems sli------------------------------------75085
+(select [Item Number], [Document Date], sum(QTY) as 'total qty' from blu.dbo.SalesLineItems sli
 join it.dbo.LOCATION_INFO loc WITH (nolock)
 on sli.[Customer Class] = loc.[SYSTEM_CUSTOMER_CLASS]
 where [Item Number] IN (select [item number] from #temp)
@@ -68,30 +72,32 @@ and sli.[Extended Price] > 0
 and loc.division = 'Blu Dot'
 group by [Item Number], [Document Date]) a
 
-select * from IT_DEV.dbo.data_saleslineitem ---58225
+select * from IT_DEV.dbo.data_saleslineitem ------58579
 
-----Creating a new table in IT_Dev and storing data from rpt_orders Table
+----Creating a new table in IT_Dev and storing data from OTB_RPT_INVENTORY_CHECK_DAILY_LOG Table. This table contains all updates
 
 select a.* into IT_DEV.dbo.data_rpt_orders from 
 (select item_number,
 coalesce(LAG(Change_Date,1,Null) OVER (PARTITION BY item_number ORDER BY Change_date),'2018-02-01') AS PrevDate, Change_Date,
 Original_Note, New_Note,Updates from it.dbo.OTB_RPT_INVENTORY_CHECK_DAILY_LOG 
 where item_number IN (select [item number] from #temp) 
-and Updates in ('Instock to Out', 'Out to Instock')) a
+---and Updates in ('Instock to Out', 'Out to Instock')
+) a
 
-select * from IT_DEV.dbo.data_rpt_orders ---1586
+select * from IT_DEV.dbo.data_rpt_orders ---2013
+
 
 ---Creating table to hold the query results together
+
 Create table IT_DEV.dbo.Sales_lost (item_number varchar(100), [Stock Status] varchar(100), [Total Qty] numeric(19,5), 
 Days int, sales_per_day numeric(19,5))
 select * from IT_DEV.dbo.Sales_lost
-
 
 ----selecting items to loop over using cursor
 
 DECLARE @item as varchar(100);
 
-DECLARE item_cursor CURSOR FOR
+DECLARE item_cursor CURSOR FOR                                  -----------606 items stored in item_cursor
 select t.[Item Number] from #temp t 
 inner join
 (select distinct item_number from IT_DEV.dbo.data_rpt_orders ) v 
@@ -101,7 +107,7 @@ OPEN item_cursor
 
 FETCH NEXT FROM item_cursor INTO @item  ---brings first value into @item
 
-WHILE @@FETCH_STATUS = 0
+WHILE @@FETCH_STATUS = 0                  ---------FETCH_STATUS = 1 means no more items left and the loop exits
 BEGIN
 
 INSERT INTO IT_DEV.dbo.Sales_lost (item_number, [Stock Status], [Total Qty], Days, sales_per_day)
@@ -128,7 +134,8 @@ where a. [Item Number] = b.[item_number]
 AND a. [Item Number] = @item
 ) x
 group by x.[item_number],x.[Stock Status], x.[days]
-having x.[Stock Status] IN ('Instock','Out')
+having x.[Stock Status] IN ('Instock','Out') 
+/*---('Instock','Out','None','Did not exist', 'New - QC', 'New - Ocean', 'OUT-DNR', 'DNR', 'New')*/
 ) y
 group by y.[item_number],y.[Stock Status];
 
@@ -137,7 +144,6 @@ FETCH NEXT FROM item_cursor INTO @item
 END
 CLOSE item_cursor;
 DEALLOCATE item_cursor;
-
 
 ---Final Result
 

@@ -16,6 +16,11 @@ V2 - 01/03/2019
 
 1. Storing data in IT_DEV.dbo.data_rpt_orders table for all updates type. This will give us total sales and stock status for 
    every update and I ma storing just the instock and out status in the final output table. 
+   
+ v3 - 01/04/2019
+ 1. Adding filters to Temp table to get the items which have been invoiced before to filter out new items.
+ 2. Including only sellable items in the analysis.
+ 3. Considering DNR as Instock.
 		
 ***************************/
 
@@ -47,13 +52,18 @@ and sli.[Void Status] = 'Normal'
 and sli.[SOP Number]  NOT LIKE '%SVC%'
 and sli.[Extended Price] > 0
 and loc.division = 'Blu Dot')
+and [Document Date] < '2018-02-01'
+    and [Location Code] = 'BDMN'
+    and [SOP Type] = 'Invoice'    
+    and [Void Status] = 'Normal'    
+    and [SOP Number]  NOT LIKE '%SVC%'
+    and [Extended Price] > 0
 group by [Item Number]
-HAVING min([Document Date]) < '2018-02-01'
 ) a
 
 --------selecting data from temp table
 
-select * from #temp --------2137
+select * from #temp  --------1977
 
 ----Creating a new table in IT_Dev and storing data from salesLineitem Table
 
@@ -72,7 +82,7 @@ and sli.[Extended Price] > 0
 and loc.division = 'Blu Dot'
 group by [Item Number], [Document Date]) a
 
-select * from IT_DEV.dbo.data_saleslineitem ------58579
+select * from IT_DEV.dbo.data_saleslineitem ------56802
 
 ----Creating a new table in IT_Dev and storing data from OTB_RPT_INVENTORY_CHECK_DAILY_LOG Table. This table contains all updates
 
@@ -84,7 +94,7 @@ where item_number IN (select [item number] from #temp)
 ---and Updates in ('Instock to Out', 'Out to Instock')
 ) a
 
-select * from IT_DEV.dbo.data_rpt_orders ---2013
+select * from IT_DEV.dbo.data_rpt_orders ---1776
 
 
 ---Creating table to hold the query results together
@@ -97,11 +107,14 @@ select * from IT_DEV.dbo.Sales_lost
 
 DECLARE @item as varchar(100);
 
-DECLARE item_cursor CURSOR FOR                                  -----------606 items stored in item_cursor
+DECLARE item_cursor CURSOR FOR                                  -----------423 items stored in item_cursor which are sales inventory items
 select t.[Item Number] from #temp t 
 inner join
 (select distinct item_number from IT_DEV.dbo.data_rpt_orders ) v 
-on t.[Item Number] = v.item_number;
+on t.[Item Number] = v.item_number
+inner join it.dbo.Level1_Can_we_Build_it lvl with (nolock)
+on t.[Item Number] = lvl.[item number]
+where lvl.Type = 'Sales Inventory';
 
 OPEN item_cursor
 
@@ -113,7 +126,13 @@ BEGIN
 INSERT INTO IT_DEV.dbo.Sales_lost (item_number, [Stock Status], [Total Qty], Days, sales_per_day)
 select y.[item_number], y.[Stock Status], sum(y.[Total Qty]) as 'Total Qty', sum(y.days) AS 'Days', sum(y.[Total Qty])/ sum(y.days) as 'sales_per_day'
 from  (
-select x.[item_number], x.[Stock Status], sum(x.[total qty]) AS 'Total Qty', x.days from
+select x.[item_number], 
+CASE
+when x.[Stock Status] = 'Out' THEN 'Out'
+when x.[Stock Status] = 'Instock' THEN 'Instock'
+when x.[Stock Status] = 'DNR' THEN 'Instock' 
+end AS 'Stock Status',
+sum(x.[total qty]) AS 'Total Qty', x.days from
 (
 select a.[Item Number], a.[Document Date], a.[total qty], b.item_number,b. PrevDate, b. Change_Date,  b.New_Note, b.original_Note,b.Updates,
 case
@@ -133,9 +152,17 @@ IT_DEV.dbo.data_rpt_orders b with (nolock)
 where a. [Item Number] = b.[item_number]
 AND a. [Item Number] = @item
 ) x
-group by x.[item_number],x.[Stock Status], x.[days]
-having x.[Stock Status] IN ('Instock','Out') 
-/*---('Instock','Out','None','Did not exist', 'New - QC', 'New - Ocean', 'OUT-DNR', 'DNR', 'New')*/
+group by x.[item_number],
+CASE
+when x.[Stock Status] = 'Out' THEN 'Out'
+when x.[Stock Status] = 'Instock' THEN 'Instock'
+when x.[Stock Status] = 'DNR' THEN 'Instock' End, 
+x.[days]
+having CASE
+when x.[Stock Status] = 'Out' THEN 'Out'
+when x.[Stock Status] = 'Instock' THEN 'Instock'
+when x.[Stock Status] = 'DNR' THEN 'Instock' End 
+ IN ('Instock','Out')                           /*---('Instock','Out','None','Did not exist', 'New - QC', 'New - Ocean', 'OUT-DNR', 'DNR', 'New')*/
 ) y
 group by y.[item_number],y.[Stock Status];
 

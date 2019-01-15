@@ -39,6 +39,9 @@ Updates: V1 - 11/1/2017
 		
 		V16 - 12/19/2018
 		1. Added Unit Cost and Included Service orders
+		
+		V17 - 1/15/2019
+		1. Added Hold, Payment Terms ID and Payment Received fields in the table
 
 Kyle Notes
 	1. Web Outlet Sale = 'No' and 20/20 Sale = 'No'.  Originating Subtotal ends in 00 or is Mattress.  It is a sale in October that isn't 20% off RETAIL - Normal Web Sale
@@ -52,7 +55,7 @@ Kyle Notes
 /*
 Unposted transactions, the tables are called Work tables
 */
-Select
+Select 
 	oln.MSTRNUMB as [Master Number],
 	cast(oln.DOCDATE as date) as [Demand Date],
 	rtrim(oln.SOPNUMBE) as [SOP Number], -- the view I was using uses it from the Line Item level
@@ -97,7 +100,10 @@ Select
 	'Original Type' = blu.dbo.Dyn_func_original_type(oln.[origtype]),
 	cast(oln.reqshipdate as date) as [Requested Ship Date - Order Lvl],
 	pod.Promise_Date as [PO Promise Date],
-	pod.Promise_Date_Calculation as [PO Promise Date Calculation]
+	pod.Promise_Date_Calculation as [PO Promise Date Calculation],
+	'Hold' = blu.dbo.Dyn_func_boolean_all(cus.[hold]),
+	Rtrim(oln.[pymtrmid]) as 'Payment Terms ID',
+	oln.[pymtrcvd]  as 'Payment Received'  
 from
 	blu.dbo.sop10100 as oln with (nolock)
 	inner join
@@ -217,7 +223,10 @@ Select
 	'Original Type' = blu.dbo.Dyn_func_original_type(oln.[origtype]),
 	cast(oln.reqshipdate as date) as [Requested Ship Date - Order Lvl],
 	pod.Promise_Date as [PO Promise Date],
-	pod.Promise_Date_Calculation as [PO Promise Date Calculation]
+	pod.Promise_Date_Calculation as [PO Promise Date Calculation],
+	'Hold' = blu.dbo.Dyn_func_boolean_all(cus.[hold]),
+	Rtrim(oln.[pymtrmid]) as  'Payment Terms ID',
+	oln.[pymtrcvd]  as 'Payment Received' 
 from
 	blu.dbo.sop30200 as oln with (nolock)
 	inner join

@@ -42,6 +42,9 @@ Updates: V1 - 11/1/2017
 		
 		V17 - 1/15/2019
 		1. Added Hold, Payment Terms ID and Payment Received fields in the table
+		
+		V18 - 1/17/2019
+		1. Payment recieved id divided by number of items bought under each sop number.
 
 Kyle Notes
 	1. Web Outlet Sale = 'No' and 20/20 Sale = 'No'.  Originating Subtotal ends in 00 or is Mattress.  It is a sale in October that isn't 20% off RETAIL - Normal Web Sale
@@ -56,6 +59,57 @@ Kyle Notes
 Unposted transactions, the tables are called Work tables
 */
 Select 
+	a.[Master Number],
+	a.[Demand Date],
+	a.[SOP Number],
+	a.[SOP Type],
+	a.[System Customer Class],
+	a.[Customer Class],
+	a.[Budget Customer Class],
+	a.[Location Type],
+	a.[Division],
+	a.[Customer Name],
+	a.[Customer Name from Customer Master],
+	a.[Customer Number],
+	a.[Customer PO Number],
+	a.[Item Number],
+	a.[Item Description],
+	a.Item_Level,
+	a.[Component Sequence],
+	a.QTY,
+	a.[Item Type],
+	a.[Salesperson ID from Sales Transaction],
+	a.BDB_Product,
+	a.Active_Item,
+	a.Color,
+	a.Style,
+	a.Category,
+	a.[Item Class Code],
+	a.[City From Customer Master],
+	a.[City from Sales Transaction],
+	a.[Contact Person from Customer Master],
+	a.[Originating Subtotal],
+	a.[Originating Trade Discount Amount],
+	a.[Demand Amount],
+	a.Retail_Price,
+	a.[Unit Cost],
+	a.[Batch Number],
+	a.[Shipping Method from Sales Transaction],
+	a.[QTY To Invoice],
+	a.[Invoice Level 1],
+	a.[Line Item Sequence],
+	a.[Pick Up Date],
+	a.[Document Status],
+	a.[Original Type],
+	a.[Requested Ship Date - Order Lvl],
+	a.[PO Promise Date],
+	a.[PO Promise Date Calculation],
+	a.Hold,
+	a.[Payment Terms ID],
+	ROUND(a.[Payment Received]/b.[count],4) as 'Payment Received'
+	from
+(
+(Select 
 	oln.MSTRNUMB as [Master Number],
 	cast(oln.DOCDATE as date) as [Demand Date],
 	rtrim(oln.SOPNUMBE) as [SOP Number], -- the view I was using uses it from the Line Item level
@@ -173,12 +227,13 @@ Where
 	and (oln.SOPTYPE = 2 or (oln.SOPTYPE = 3 and oln.BACHNUMB like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
 	and oln.VOIDSTTS = 0 -- Normal or Not Voided
 	--and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
+	)
 
 union all
 /* 
 Looking at history SOP tables, when transactions post they go to the history tables
 */
-Select
+(Select
 	oln.MSTRNUMB as [Master Number],
 	cast(oln.DOCDATE as date) as [Demand Date],
 	rtrim(oln.SOPNUMBE) as [SOP Number], -- the view I was using uses it from the Line Item level
@@ -296,3 +351,255 @@ Where
 	and (oln.SOPTYPE = 2 or (oln.SOPTYPE = 3 and oln.BACHNUMB like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
 	and oln.VOIDSTTS = 0 -- Normal or Not Voided
 	--and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
+	)
+	) a
+	inner join
+(select c.[SOP Number], count(c.[SOP Number]) as 'count' from
+(
+(Select 
+	oln.MSTRNUMB as [Master Number],
+	cast(oln.DOCDATE as date) as [Demand Date],
+	rtrim(oln.SOPNUMBE) as [SOP Number], -- the view I was using uses it from the Line Item level
+	'SOP Type' = blu.dbo.Dyn_func_sop_type(oln.[soptype]),
+	rtrim(cus.CUSTCLAS) as [System Customer Class],
+	loc.REPORTING_CUSTOMER_CLASS as [Customer Class],
+	loc.BUDGET_CUSTOMER_CLASS as [Budget Customer Class],
+	loc.LOCATION_TYPE as [Location Type],
+	loc.[Division],
+	rtrim(oln.CUSTNAME) as [Customer Name],
+	rtrim(cus.CUSTNAME) as [Customer Name from Customer Master],
+	rtrim(oln.CUSTNMBR) as [Customer Number],
+	rtrim(oln.CSTPONBR) as  [Customer PO Number],
+	rtrim(lvn.ITEMNMBR) as [Item Number],
+	rtrim(lvn.ITEMDESC) as [Item Description],
+	substring(lvn.ITEMNMBR, 3,1) as Item_Level,
+	lvn.CMPNTSEQ as [Component Sequence],
+	lvn.QUANTITY as QTY,
+	'Item Type' = blu.dbo.Dyn_func_item_type(inv.[itemtype]),
+	 rtrim(oln.slprsnid)  as [Salesperson ID from Sales Transaction],
+	rtrim(inv.uscatvls_1) as BDB_Product,
+	rtrim(inv.uscatvls_2) as Active_Item,
+	rtrim(inv.uscatvls_3) as Color,
+	rtrim(inv.uscatvls_4) as Style,
+	rtrim(inv.uscatvls_5) as Category,
+	rtrim(inv.itmclscd) as [Item Class Code],
+	rtrim(cus.city) as [City From Customer Master],
+	rtrim(oln.city) as [City from Sales Transaction],
+	rtrim(cus.cntcprsn) as [Contact Person from Customer Master],
+	lvn.XTNDPRCE as [Originating Subtotal],
+	lvn.ortdisam as [Originating Trade Discount Amount],
+	(lvn.XTNDPRCE - lvn.ortdisam) AS [Demand Amount],
+	ret.UOMPRICE as Retail_Price,
+	lvn.UNITCOST as 'Unit Cost',
+	rtrim(oln.bachnumb) as [Batch Number],
+	rtrim(oln.SHIPMTHD) as [Shipping Method from Sales Transaction],
+	lvn.qtytoinv as [QTY To Invoice],
+	kit.qtytoinv as [Invoice Level 1],
+	lvn.lnitmseq as [Line Item Sequence],
+	cast(stc.[Pick-up date] as date) as [Pick Up Date],
+	'Document Status' = blu.dbo.Dyn_func_document_status_sop_line_items(1),
+	'Original Type' = blu.dbo.Dyn_func_original_type(oln.[origtype]),
+	cast(oln.reqshipdate as date) as [Requested Ship Date - Order Lvl],
+	pod.Promise_Date as [PO Promise Date],
+	pod.Promise_Date_Calculation as [PO Promise Date Calculation],
+	'Hold' = blu.dbo.Dyn_func_boolean_all(cus.[hold]),
+	Rtrim(oln.[pymtrmid]) as 'Payment Terms ID',
+	oln.[pymtrcvd]  as 'Payment Received'  
+from
+	blu.dbo.sop10100 as oln with (nolock)
+	inner join
+	blu.dbo.sop10200 as lvn with (nolock)
+		on oln.SOPNUMBE = lvn.SOPNUMBE
+		and oln.SOPTYPE = lvn.SOPTYPE 
+	left join
+	blu.dbo.rm00101 as cus with (nolock)
+		on oln.CUSTNMBR = cus.CUSTNMBR
+	inner join
+	it.dbo.LOCATION_INFO as loc with (nolock)
+		on cus.CUSTCLAS = loc.SYSTEM_CUSTOMER_CLASS
+	left join -- seems to definitely needs a left join
+	blu.dbo.iv00101 as inv with (nolock)
+		on lvn.ITEMNMBR = inv.ITEMNMBR
+	Left Join
+	BLU.dbo.IV00108 as ret with (nolock) 
+		on lvn.ITEMNMBR = ret.ITEMNMBR
+		and ret.PRCLEVEL = 'RETAIL'
+	left join
+	blu.dbo.EXTSCAF stc with (nolock)
+		on lvn.SOPNUMBE = stc.[SOP Number]
+		and lvn.lnitmseq = stc.[Line Item Sequence]
+	Left Join
+		(select
+			a.soptype, a.sopnumbe, a.lnitmseq, a.qtytoinv, 'Order' as [SOP Type]
+		From
+			blu.dbo.sop10200 a with (nolock)
+			inner join
+			blu.dbo.iv00101 b with (nolock)
+				on a.ITEMNMBR = b.ITEMNMBR
+		where
+			b.ITEMTYPE = 3
+			and a.SOPTYPE = 2
+		) Kit
+		on oln.soptype = kit.soptype
+		and oln.sopnumbe = kit.sopnumbe
+		and lvn.lnitmseq  = kit.LNITMSEQ
+	Left Join
+		(select 
+			case when a.total = 1 then 'From PO' else 'Calculated' end as Promise_Date_Calculation,
+			case when a.total = 1 then cast(d.date1 as date) else dateadd(day, 14, cast(d.date1 as date)) end as Promise_Date,
+			rtrim(c.extender_Key_Values_1) as Item_Number,
+			a.Extender_Record_ID
+		from 
+		BLU.dbo.EXT01103 a with (nolock)
+		inner join
+		BLU.dbo.EXT20010 b with (nolock)
+			on a.field_ID = b.Field_ID
+		Inner join
+		BLU.dbo.EXT01100 c with (nolock)
+			on a.Extender_Record_ID = c.Extender_Record_ID
+		Inner join
+		blu.dbo.EXT01102 d with (nolock)
+			on c.Extender_Record_ID = d.Extender_Record_ID
+		Inner join
+		blu.dbo.EXT20010 e with (nolock)
+			on d.Field_ID = e.Field_ID
+		where b.FIELDNAM = 'Promise Date from PO'
+			and c.Extender_Window_ID = 'Inventory Card'
+		--	and c.Extender_Key_Values_1 = 'CN1-THROW1-GR'
+			and e.FIELDNAM = 'Promise Date'
+		) pod
+		on lvn.ITEMNMBR = pod.Item_Number
+Where
+	oln.DOCDATE >= '2016-01-01'
+	and (oln.SOPTYPE = 2 or (oln.SOPTYPE = 3 and oln.BACHNUMB like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
+	and oln.VOIDSTTS = 0 -- Normal or Not Voided
+	--and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
+	)
+
+union all
+/* 
+Looking at history SOP tables, when transactions post they go to the history tables
+*/
+(Select
+	oln.MSTRNUMB as [Master Number],
+	cast(oln.DOCDATE as date) as [Demand Date],
+	rtrim(oln.SOPNUMBE) as [SOP Number], -- the view I was using uses it from the Line Item level
+	'SOP Type' = blu.dbo.Dyn_func_sop_type(oln.[soptype]),
+	rtrim(cus.CUSTCLAS) as [System Customer Class],
+	loc.REPORTING_CUSTOMER_CLASS as [Customer Class],
+	loc.BUDGET_CUSTOMER_CLASS as [Budget Customer Class],
+	loc.LOCATION_TYPE as [Location Type],
+	loc.[Division],
+	rtrim(oln.CUSTNAME) as [Customer Name],
+	rtrim(cus.CUSTNAME) as [Customer Name from Customer Master],
+	rtrim(oln.CUSTNMBR) as [Customer Number],
+	rtrim(oln.CSTPONBR) as  [Customer PO Number],
+	rtrim(lvn.ITEMNMBR) as [Item Number],
+	rtrim(lvn.ITEMDESC) as [Item Description],
+	substring(lvn.ITEMNMBR, 3,1) as Item_Level,
+	lvn.CMPNTSEQ as [Component Sequence],
+	lvn.QUANTITY as QTY,
+	'Item Type' = blu.dbo.Dyn_func_item_type(inv.[itemtype]),
+	 rtrim(oln.slprsnid)  as [Salesperson ID from Sales Transaction],
+	rtrim(inv.uscatvls_1) as BDB_Product,
+	rtrim(inv.uscatvls_2) as Active_Item,
+	rtrim(inv.uscatvls_3) as Color,
+	rtrim(inv.uscatvls_4) as Style,
+	rtrim(inv.uscatvls_5) as Category,
+	rtrim(inv.itmclscd) as [Item Class Code],
+	rtrim(cus.city) as [City From Customer Master],
+	rtrim(oln.city) as [City from Sales Transaction],
+	rtrim(cus.cntcprsn) as [Contact Person from Customer Master],
+	lvn.XTNDPRCE as [Originating Subtotal],
+	lvn.ortdisam as [Originating Trade Discount Amount],
+	(lvn.XTNDPRCE - lvn.ortdisam) AS [Demand Amount],
+	ret.UOMPRICE as Retail_Price,
+	lvn.UNITCOST as 'Unit Cost',
+	rtrim(oln.bachnumb) as [Batch Number],
+	rtrim(oln.SHIPMTHD) as [Shipping Method from Sales Transaction],
+	lvn.qtytoinv as [QTY To Invoice],
+	kit.qtytoinv as [Invoice Level 1],
+	lvn.lnitmseq as [Line Item Sequence],
+	cast(stc.[Pick-up date] as date) as [Pick Up Date],
+	'Document Status' = blu.dbo.Dyn_func_document_status_sop_line_items(2),
+	'Original Type' = blu.dbo.Dyn_func_original_type(oln.[origtype]),
+	cast(oln.reqshipdate as date) as [Requested Ship Date - Order Lvl],
+	pod.Promise_Date as [PO Promise Date],
+	pod.Promise_Date_Calculation as [PO Promise Date Calculation],
+	'Hold' = blu.dbo.Dyn_func_boolean_all(cus.[hold]),
+	Rtrim(oln.[pymtrmid]) as  'Payment Terms ID',
+	oln.[pymtrcvd]  as 'Payment Received' 
+from
+	blu.dbo.sop30200 as oln with (nolock)
+	inner join
+	blu.dbo.sop30300 as lvn with (nolock)
+		on oln.SOPNUMBE = lvn.SOPNUMBE
+		and oln.SOPTYPE = lvn.SOPTYPE 
+	left join
+	blu.dbo.rm00101 as cus with (nolock)
+		on oln.CUSTNMBR = cus.CUSTNMBR
+	inner join
+	it.dbo.LOCATION_INFO as loc with (nolock)
+		on cus.CUSTCLAS = loc.SYSTEM_CUSTOMER_CLASS
+	left join -- seems to definitely needs a left join
+	blu.dbo.iv00101 as inv with (nolock)
+		on lvn.ITEMNMBR = inv.ITEMNMBR
+	Left Join
+	BLU.dbo.IV00108 as ret with (nolock) 
+		on lvn.ITEMNMBR = ret.ITEMNMBR
+		and ret.PRCLEVEL = 'RETAIL'
+	left join
+	blu.dbo.EXTSCAF as stc with (nolock)
+		on lvn.SOPNUMBE = stc.[SOP Number]
+		and lvn.lnitmseq = stc.[Line Item Sequence]
+	Left Join
+		(select
+			a.soptype, a.sopnumbe, a.lnitmseq, a.qtytoinv, 'Order' as [SOP Type]
+		From
+			blu.dbo.sop10200 a with (nolock)
+			inner join
+			blu.dbo.iv00101 b with (nolock)
+				on a.ITEMNMBR = b.ITEMNMBR
+		where
+			b.ITEMTYPE = 3
+			and a.SOPTYPE = 2
+		) Kit
+		on oln.soptype = kit.soptype
+		and oln.sopnumbe = kit.sopnumbe
+		and lvn.lnitmseq  = kit.LNITMSEQ
+	Left Join
+		(select 
+			case when a.total = 1 then 'From PO' else 'Calculated' end as Promise_Date_Calculation,
+			case when a.total = 1 then cast(d.date1 as date) else dateadd(day, 14, cast(d.date1 as date)) end as Promise_Date,
+			rtrim(c.extender_Key_Values_1) as Item_Number,
+			a.Extender_Record_ID
+		from 
+		BLU.dbo.EXT01103 a with (nolock)
+		inner join
+		BLU.dbo.EXT20010 b with (nolock)
+			on a.field_ID = b.Field_ID
+		Inner join
+		BLU.dbo.EXT01100 c with (nolock)
+			on a.Extender_Record_ID = c.Extender_Record_ID
+		Inner join
+		blu.dbo.EXT01102 d with (nolock)
+			on c.Extender_Record_ID = d.Extender_Record_ID
+		Inner join
+		blu.dbo.EXT20010 e with (nolock)
+			on d.Field_ID = e.Field_ID
+		where b.FIELDNAM = 'Promise Date from PO'
+			and c.Extender_Window_ID = 'Inventory Card'
+		--	and c.Extender_Key_Values_1 = 'CN1-THROW1-GR'
+			and e.FIELDNAM = 'Promise Date'
+		) pod
+		on lvn.ITEMNMBR = pod.Item_Number
+Where
+	oln.DOCDATE >= '2016-01-01'
+	and (oln.SOPTYPE = 2 or (oln.SOPTYPE = 3 and oln.BACHNUMB like 'STORE FLOOR%'))  -- Includes All Demand ORders and Sales immediately invoiced from our Stores Sales Floor Inventory
+	and oln.VOIDSTTS = 0 -- Normal or Not Voided
+	--and oln.SOPNUMBE NOT LIKE '%SVC%'  -- Exclude Service Orders
+	)
+	) c
+	group by c.[SOP Number]
+	) b
+	on a.[sop number] = b.[SOP Number]

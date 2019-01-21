@@ -10,11 +10,11 @@ Tables used
   1. OTB_RPT_INVENTORY_CHECK_DAILY_LOG
   
 Updates: 
-		
 ***************************/
 
+
 ----Creating a temp table to hold all distinct item from OTB_RPT_INVENTORY_CHECK_DAILY_LOG table and dates from feb1, 2018 
-till today from ACCT_DATE table
+----till today from ACCT_DATE table.
 
 select a.* into #item_date from
 (select t.[Item_Number], cal.[Date] 

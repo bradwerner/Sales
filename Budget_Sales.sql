@@ -1,6 +1,6 @@
 /**********************
 Program Name: Budget_Sales.sql
-Program Description: Use the daily budget table and join to the max Invoice date to be used in tableau reporting.  It also includes
+Program Description: (Tableau Driven Data set) Use the daily budget table and join to the max Invoice date to be used in tableau reporting.  It also includes
   the Location table which helps identify what the budget customer class belongs too. 
 Developer: Kyle MacKenzie
 Updates: V1 - 4/9/2018

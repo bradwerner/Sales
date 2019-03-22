@@ -95,3 +95,99 @@ FROM [IT].[dbo].[Demand_Sales_Line_Items_2015] dem
 		ON dem.[SOP Number] = sop.SOPNUMBE
 
 WHERE surv.[score] IS NOT NULL
+
+
+
+/*
+My Thoughts below
+*/
+
+
+Select
+	surv.surveyID
+	,cast(surv.MaxDate as date) as Survey_Date -- whatever you need to name this
+	,surv.[email]
+	,surv.[OrderID]
+	,sop.tracking_number
+	,dem.[Master Number]
+	,dem.[Demand Date]
+	,dem.[SOP Number]
+	,dem.[SOP Type]
+	,dem.[System Customer Class]
+	,dem.[Customer Class]
+	,dem.[Budget Customer Class]
+	,dem.[Location Type]
+	,dem.[Division]
+	,dem.[Customer Name]
+	,dem.[Customer Name from Customer Master]
+	,dem.[Customer Number]
+	,dem.[Customer PO Number]
+	,dem.[Item Number]
+	,dem.[Item Description]
+	,dem.[Item_Level]
+	,dem.[Component Sequence]
+	,dem.[QTY]
+	,dem.[Item Type]
+	,dem.[Salesperson ID from Sales Transaction]
+	,dem.[BDB_Product]
+	,dem.[Active_Item]
+	,dem.[Color]
+	,dem.[Style]
+	,dem.[Category]
+	,dem.[Item Class Code]
+	,dem.[City From Customer Master]
+	,dem.[City from Sales Transaction]
+	,dem.[Contact Person from Customer Master]
+	,dem.[Originating Subtotal]
+	,dem.[Originating Trade Discount Amount]
+	,dem.[Demand Amount]
+	,dem.[Retail_Price]
+	,dem.[Unit Cost]
+	,dem.[Batch Number]
+	,dem.[Shipping Method from Sales Transaction]
+	,dem.[QTY To Invoice]
+	,dem.[Invoice Level 1]
+	,dem.[Line Item Sequence]
+	,dem.[Pick Up Date]
+	,dem.[Document Status]
+	,dem.[Original Type]
+	,dem.[Requested Ship Date - Order Lvl]
+	,dem.[PO Promise Date]
+	,dem.[PO Promise Date Calculation]
+	,dem.[Hold]
+	,dem.[Payment Terms ID]
+	,dem.[Payment Received]
+From
+ -- 2760
+	(SELECT 
+		[SurveyID]
+		,MAX([ResponseDate]) as MaxDate
+		,[email]
+		,case when CHARINDEX('.',[OrderID]) > 1 then Left([OrderID], CHARINDEX('.',[OrderID])-1)
+			else [OrderID]
+		End as [OrderID]
+		-- ,[utm_source]
+		--  ,[utm_content]
+		,avg(cast([Score] as int)) as Score
+		--  ,[Comment]
+	FROM 
+		[IT].[dbo].[GetFeedBackSurveyResponse]
+	where 
+		orderid <> '' 
+	GROUP BY 
+		[SurveyID]
+		,[email]
+		,case when CHARINDEX('.',[OrderID]) > 1 then Left([OrderID], CHARINDEX('.',[OrderID])-1)
+			else [OrderID]
+		End
+	--  ,[utm_source]
+	--  ,[utm_content]
+		-- ,[Score]
+	--  ,[Comment]
+	) surv
+	Inner join
+	[BLU].[dbo].[SOP10107] sop
+		ON surv.[OrderID] = sop.SOPNUMBE
+	Inner join
+	IT.dbo.Demand_Sales_Line_Items_2015 dem
+		on surv.OrderID = dem.[Sop Number]

@@ -1,6 +1,6 @@
 /**********************
 Program Name: Shipment_Survey_Products.sql
-Program Description: Source table contains duplicate survey responses for some orders. Goal of this table is to return only the latest shipment survey response for each order, then apply that to each product within the order.
+Program Description: Goal of this table is to return only the latest shipment survey response for each order, then apply that to each product within the order. Table will be used to analyze how different products contribute to survey responses.
 
 Requestor: Kevin M
 Developer: Brad W
